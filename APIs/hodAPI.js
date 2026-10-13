@@ -1,6 +1,6 @@
 import exp from 'express'
-import {StudentModel} from '../backend/schema/studentModel.js'
-import {EventModel} from '../backend/schema/eventModel.js'
+import {StudentModel} from '../schema/studentModel.js'
+import {EventModel} from '../schema/eventModel.js'
 export const hodRouter=exp.Router()
 hodRouter.get("/events",async(req,res)=>{
     try{

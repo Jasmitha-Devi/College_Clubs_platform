@@ -1,10 +1,10 @@
 import exp from 'express'
-import {HodModel} from '../backend/schema/hodModel.js'
-import {StudentModel} from '../backend/schema/studentModel.js'
-import {FacultyCoordinatorModel} from '../backend/schema/facultyCoordinatorModel.js'
-import {ClassCoordinatorModel} from '../backend/schema/classCoordinatorModel.js'
-import {ClubCoordinatorModel} from '../backend/schema/clubCoordinatorModel.js'
-import {EventModel} from '../backend/schema/eventModel.js'
+import {HodModel} from '../schema/hodModel.js'
+import {StudentModel} from '../schema/studentModel.js'
+import {FacultyCoordinatorModel} from '../schema/facultyCoordinatorModel.js'
+import {ClassCoordinatorModel} from '../schema/classCoordinatorModel.js'
+import {ClubCoordinatorModel} from '../schema/clubCoordinatorModel.js'
+import {EventModel} from '../schema/eventModel.js'
 export const adminRouter=exp.Router()
 // HOD OPERATIONS
 adminRouter.post("/hods",async(req,res)=>{

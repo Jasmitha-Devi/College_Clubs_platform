@@ -1,7 +1,7 @@
 import exp from 'express'
-import {ClubCoordinatorModel} from '../backend/schema/clubCoordinatorModel.js'
-import {EventModel} from '../backend/schema/eventModel.js'
-import {StudentModel} from '../backend/schema/studentModel.js'
+import {ClubCoordinatorModel} from '../schema/clubCoordinatorModel.js'
+import {EventModel} from '../schema/eventModel.js'
+import {StudentModel} from '../schema/studentModel.js'
 export const clubCoordinatorRouter=exp.Router()
 clubCoordinatorRouter.get("/clubs/:id",async(req,res)=>{
     try{

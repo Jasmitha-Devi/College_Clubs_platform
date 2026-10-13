@@ -1,7 +1,7 @@
 import exp from 'express'
-import {ClassCoordinatorModel} from '../backend/schema/classCoordinatorModel.js'
-import {StudentModel} from '../backend/schema/studentModel.js'
-import {EventModel} from '../backend/schema/eventModel.js'
+import {ClassCoordinatorModel} from '../schema/classCoordinatorModel.js'
+import {StudentModel} from '../schema/studentModel.js'
+import {EventModel} from '../schema/eventModel.js'
 export const classCoordinatorRouter=exp.Router()
 classCoordinatorRouter.get("/:id",async(req,res)=>{
     try{

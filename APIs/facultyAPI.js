@@ -1,7 +1,7 @@
 import exp from 'express'
-import {FacultyCoordinatorModel} from '../backend/schema/facultyCoordinatorModel.js'
-import {EventModel} from '../backend/schema/eventModel.js'
-import { StudentModel } from '../backend/schema/studentModel.js'
+import {FacultyCoordinatorModel} from '../schema/facultyCoordinatorModel.js'
+import {EventModel} from '../schema/eventModel.js'
+import { StudentModel } from '../schema/studentModel.js'
 export const facultyRouter=exp.Router()
 facultyRouter.post("/faculty",async(req,res)=>{
     try{
