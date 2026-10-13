@@ -2,6 +2,7 @@ import exp from 'express'
 import {FacultyCoordinatorModel} from '../schema/facultyCoordinatorModel.js'
 import {EventModel} from '../schema/eventModel.js'
 import { StudentModel } from '../schema/studentModel.js'
+import {ClubCoordinatorModel} from '../schema/clubCoordinatorModel.js'
 export const facultyRouter=exp.Router()
 facultyRouter.post("/faculty",async(req,res)=>{
     try{
@@ -25,7 +26,7 @@ facultyRouter.get("/events",async(req,res)=>{
         })
     }
     catch(err){
-        res.status(500).json({
+        res.status(400).json({
             success:false,message:"Failed to fetch events"
         })
     }
@@ -52,20 +53,16 @@ facultyRouter.get("/event/:id",async(req,res)=>{
 facultyRouter.post("/events", async (req, res) => {
     try {
         let newEvent = req.body
-
         let faculty = await FacultyCoordinatorModel.findById(
             newEvent.facultyCoordinator
         )
-
         if (!faculty) {
             return res.status(404).json({
                 success: false,
                 message: "Faculty coordinator not found"
             })
         }
-
         let eventDocument = await EventModel.create(newEvent)
-
         res.status(201).json({
             success: true,
             message: "Event created",
@@ -88,9 +85,15 @@ facultyRouter.put("/events/:id",async(req,res)=>{
                 success:false,message:"Event not found"
             })
         }
-        updatedEvent.eventName=req.body.eventName
-        updatedEvent.organisers=req.body.organisers
-        updatedEvent.department=req.body.department
+        if(req.body.eventName!==undefined){
+            updatedEvent.eventName=req.body.eventName
+        }
+        if(req.body.organisers!==undefined){
+            updatedEvent.organisers=req.body.organisers
+        }
+        if(req.body.department!==undefined){
+            updatedEvent.department=req.body.department
+        }
         await updatedEvent.save()
         res.status(200).json({
             success:true,message:"Event updated",data:updatedEvent
@@ -105,12 +108,53 @@ facultyRouter.put("/events/:id",async(req,res)=>{
 facultyRouter.delete("/events/:id",async(req,res)=>{
     try{
         let idOfReq=req.params.id
-        let deletedEvent=await EventModel.findByIdAndDelete(idOfReq)
+        let deletedEvent=await EventModel.findById(idOfReq)
         if(!deletedEvent){
             return res.status(404).json({
                 success:false,message:"Event not found"
             })
         }
+        for(let studentID of deletedEvent.registeredStudents){
+            let student=await StudentModel.findById(studentID)
+            if(student){
+                let updatedRegisteredEvents=[]
+                for(let registeredEventID of student.registeredEvents){
+                    if(registeredEventID.toString()!==deletedEvent._id.toString()){
+                        updatedRegisteredEvents.push(registeredEventID)
+                    }
+                }
+                student.registeredEvents=updatedRegisteredEvents
+                let updatedParticipatedEvents=[]
+                for(let participatedEventID of student.participatedEvents){
+                    if(participatedEventID.toString()!==deletedEvent._id.toString()){
+                        updatedParticipatedEvents.push(participatedEventID)
+                    }
+                }
+                student.participatedEvents=updatedParticipatedEvents
+                let updatedEventsWon=[]
+                for(let wonEventID of student.eventsWon){
+                    if(wonEventID.toString()!==deletedEvent._id.toString()){
+                        updatedEventsWon.push(wonEventID)
+                    }
+                }
+                student.eventsWon=updatedEventsWon
+                await student.save()
+            }
+        }
+        let eventCoordinators=await ClubCoordinatorModel.find({
+            managedEvents:deletedEvent._id.toString()
+        })
+        for(let eventCoordinator of eventCoordinators){
+            let updatedManagedEvents=[]
+            for(let managedEventID of eventCoordinator.managedEvents){
+                if(managedEventID.toString()!==deletedEvent._id.toString()){
+                    updatedManagedEvents.push(managedEventID)
+                }
+            }
+            eventCoordinator.managedEvents=updatedManagedEvents
+            await eventCoordinator.save()
+        }
+        await EventModel.findByIdAndDelete(idOfReq)
         res.status(200).json({
             success:true,message:"Event deleted successfully"
         })

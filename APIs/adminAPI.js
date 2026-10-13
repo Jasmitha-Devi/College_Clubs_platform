@@ -5,6 +5,7 @@ import {FacultyCoordinatorModel} from '../schema/facultyCoordinatorModel.js'
 import {ClassCoordinatorModel} from '../schema/classCoordinatorModel.js'
 import {ClubCoordinatorModel} from '../schema/clubCoordinatorModel.js'
 import {EventModel} from '../schema/eventModel.js'
+import {ClubModel} from '../schema/clubModel.js'
 export const adminRouter=exp.Router()
 // HOD OPERATIONS
 adminRouter.post("/hods",async(req,res)=>{
@@ -29,7 +30,7 @@ adminRouter.get("/hods",async(req,res)=>{
         })
     }
     catch(err){
-        res.status(500).json({
+        res.status(400).json({
             success:false,message:"Failed to fetch HODs"
         })
     }
@@ -108,7 +109,7 @@ adminRouter.get("/students",async(req,res)=>{
         })
     }
     catch(err){
-        res.status(500).json({
+        res.status(400).json({
             success:false,message:"Failed to fetch students"
         })
     }
@@ -164,22 +165,61 @@ adminRouter.put("/student/:id",async(req,res)=>{
 adminRouter.delete("/student/:id",async(req,res)=>{
     try{
         let idOfReq=req.params.id
-        let deletedStudent=await StudentModel.findByIdAndDelete(idOfReq)
+
+        let deletedStudent=await StudentModel.findById(idOfReq)
+
         if(!deletedStudent){
             return res.status(404).json({
                 success:false,message:"Student not found"
             })
         }
+
+        // Remove student from club memberships
+        let clubs=await ClubModel.find({
+            members:deletedStudent._id
+        })
+
+        for(let club of clubs){
+            let updatedMembers=[]
+            for(let memberID of club.members){
+                if(memberID.toString()!==deletedStudent._id.toString()){
+                    updatedMembers.push(memberID)
+                }
+            }
+            club.members=updatedMembers
+            await club.save()
+        }
+
+        // Remove student from event registrations
+        let events=await EventModel.find({
+            registeredStudents:deletedStudent._id
+        })
+
+        for(let event of events){
+            let updatedRegisteredStudents=[]
+            for(let studentID of event.registeredStudents){
+                if(studentID.toString()!==deletedStudent._id.toString()){
+                    updatedRegisteredStudents.push(studentID)
+                }
+            }
+            event.registeredStudents=updatedRegisteredStudents
+            await event.save()
+        }
+
+        // Delete the student
+        await StudentModel.findByIdAndDelete(idOfReq)
+
         res.status(200).json({
             success:true,message:"Student deleted successfully"
         })
     }
     catch(err){
         res.status(400).json({
-            success:false,message:"Invalid student ID"
+            success:false,message:"Failed to delete student"
         })
     }
 })
+
 // FACULTY COORDINATOR OPERATIONS
 adminRouter.post("/faculty",async(req,res)=>{
     try{
@@ -259,19 +299,46 @@ adminRouter.put("/faculty/:id",async(req,res)=>{
 adminRouter.delete("/faculty/:id",async(req,res)=>{
     try{
         let idOfReq=req.params.id
-        let deletedFaculty=await FacultyCoordinatorModel.findByIdAndDelete(idOfReq)
-        if(!deletedFaculty){
+
+        let faculty=await FacultyCoordinatorModel.findById(idOfReq)
+
+        if(!faculty){
             return res.status(404).json({
                 success:false,message:"Faculty not found"
             })
         }
+
+        let clubs=await ClubModel.find({
+            facultyCoordinator:faculty._id
+        })
+
+        if(clubs.length>0){
+            return res.status(400).json({
+                success:false,
+                message:"Cannot delete faculty coordinator while clubs are assigned. Reassign or delete the clubs first."
+            })
+        }
+
+        let events=await EventModel.find({
+            facultyCoordinator:faculty._id
+        })
+
+        if(events.length>0){
+            return res.status(400).json({
+                success:false,
+                message:"Cannot delete faculty coordinator while events are assigned. Reassign or delete the events first."
+            })
+        }
+
+        await FacultyCoordinatorModel.findByIdAndDelete(idOfReq)
+
         res.status(200).json({
             success:true,message:"Faculty deleted successfully"
         })
     }
     catch(err){
         res.status(400).json({
-            success:false,message:"Invalid faculty ID"
+            success:false,message:"Failed to delete faculty"
         })
     }
 })
@@ -393,7 +460,7 @@ adminRouter.get("/club-coordinators",async(req,res)=>{
         })
     }
     catch(err){
-        res.status(500).json({
+        res.status(400).json({
             success:false,message:"Failed to fetch club coordinators"
         })
     }
@@ -451,19 +518,46 @@ adminRouter.put("/club-coordinator/:id",async(req,res)=>{
 adminRouter.delete("/club-coordinator/:id",async(req,res)=>{
     try{
         let idOfReq=req.params.id
-        let deletedCoordinator=await ClubCoordinatorModel.findByIdAndDelete(idOfReq)
-        if(!deletedCoordinator){
+
+        let coordinator=await ClubCoordinatorModel.findById(idOfReq)
+
+        if(!coordinator){
             return res.status(404).json({
                 success:false,message:"Club coordinator not found"
             })
         }
+
+        let clubs=await ClubModel.find({
+            clubCoordinator:coordinator._id
+        })
+
+        if(clubs.length>0){
+            return res.status(400).json({
+                success:false,
+                message:"Cannot delete coordinator while clubs are assigned. Reassign or delete the clubs first."
+            })
+        }
+
+        let events=await EventModel.find({
+            _id:{$in:coordinator.managedEvents}
+        })
+
+        if(events.length>0){
+            return res.status(400).json({
+                success:false,
+                message:"Cannot delete coordinator while events are managed. Reassign or delete the events first."
+            })
+        }
+
+        await ClubCoordinatorModel.findByIdAndDelete(idOfReq)
+
         res.status(200).json({
             success:true,message:"Club coordinator deleted successfully"
         })
     }
     catch(err){
         res.status(400).json({
-            success:false,message:"Invalid club coordinator ID"
+            success:false,message:"Failed to delete club coordinator"
         })
     }
 })
@@ -490,7 +584,7 @@ adminRouter.get("/events",async(req,res)=>{
         })
     }
     catch(err){
-        res.status(500).json({
+        res.status(400).json({
             success:false,message:"Failed to fetch events"
         })
     }
@@ -510,7 +604,7 @@ adminRouter.get("/event/:id",async(req,res)=>{
     }
     catch(err){
         res.status(400).json({
-            success:false,message:"Invalhaaa id event ID"
+            success:false,message:"Invalid id event ID"
         })
     }
 })
@@ -541,22 +635,81 @@ adminRouter.put("/event/:id",async(req,res)=>{
 adminRouter.delete("/event/:id",async(req,res)=>{
     try{
         let idOfReq=req.params.id
-        let deletedEvent=await EventModel.findByIdAndDelete(idOfReq)
+
+        let deletedEvent=await EventModel.findById(idOfReq)
+
         if(!deletedEvent){
             return res.status(404).json({
                 success:false,message:"Event not found"
             })
         }
+
+        // Remove event references from students
+        let students=await StudentModel.find({
+            $or:[
+                {registeredEvents:deletedEvent._id},
+                {participatedEvents:deletedEvent._id},
+                {eventsWon:deletedEvent._id}
+            ]
+        })
+
+        for(let student of students){
+            let updatedRegisteredEvents=[]
+            for(let eventID of student.registeredEvents){
+                if(eventID.toString()!==deletedEvent._id.toString()){
+                    updatedRegisteredEvents.push(eventID)
+                }
+            }
+            student.registeredEvents=updatedRegisteredEvents
+
+            let updatedParticipatedEvents=[]
+            for(let eventID of student.participatedEvents){
+                if(eventID.toString()!==deletedEvent._id.toString()){
+                    updatedParticipatedEvents.push(eventID)
+                }
+            }
+            student.participatedEvents=updatedParticipatedEvents
+
+            let updatedEventsWon=[]
+            for(let eventID of student.eventsWon){
+                if(eventID.toString()!==deletedEvent._id.toString()){
+                    updatedEventsWon.push(eventID)
+                }
+            }
+            student.eventsWon=updatedEventsWon
+
+            await student.save()
+        }
+
+        // Remove event from club coordinators' managed events
+        let coordinators=await ClubCoordinatorModel.find({
+            managedEvents:deletedEvent._id.toString()
+        })
+
+        for(let coordinator of coordinators){
+            let updatedManagedEvents=[]
+            for(let eventID of coordinator.managedEvents){
+                if(eventID.toString()!==deletedEvent._id.toString()){
+                    updatedManagedEvents.push(eventID)
+                }
+            }
+            coordinator.managedEvents=updatedManagedEvents
+            await coordinator.save()
+        }
+
+        await EventModel.findByIdAndDelete(idOfReq)
+
         res.status(200).json({
             success:true,message:"Event deleted successfully"
         })
     }
     catch(err){
         res.status(400).json({
-            success:false,message:"Invalid event ID"
+            success:false,message:"Failed to delete event"
         })
     }
 })
+
 adminRouter.get("/students/:department",async(req,res)=>{
     try{
         let departmentName=req.params.department
@@ -580,7 +733,7 @@ adminRouter.get("/department/events/:department",async(req,res)=>{
         })
     }
     catch(err){
-        res.status(500).json({
+        res.status(400).json({
             success:false,message:"Failed to fetch events"
         })
     }

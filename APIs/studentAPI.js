@@ -1,6 +1,6 @@
 import exp from 'express'
-import {StudentModel} from '../backend/schema/studentModel.js' 
-import { EventModel } from '../backend/schema/eventModel.js'
+import {StudentModel} from '../schema/studentModel.js' 
+import { EventModel } from '../schema/eventModel.js'
 export const studentRouter=exp.Router()
 studentRouter.post("/students",async (req,res)=>{
     let newstudent=req.body

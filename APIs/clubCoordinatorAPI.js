@@ -1,7 +1,10 @@
+```javascript
 import exp from 'express'
 import {ClubCoordinatorModel} from '../schema/clubCoordinatorModel.js'
 import {EventModel} from '../schema/eventModel.js'
 import {StudentModel} from '../schema/studentModel.js'
+import {FacultyCoordinatorModel} from '../schema/facultyCoordinatorModel.js'
+import {ClubModel} from '../schema/clubModel.js'
 export const clubCoordinatorRouter=exp.Router()
 clubCoordinatorRouter.get("/clubs/:id",async(req,res)=>{
     try{
@@ -52,6 +55,27 @@ clubCoordinatorRouter.post("/coordinator/:id/events",async(req,res)=>{
             })
         }
         let newEvent=req.body
+        let facultyID=newEvent.facultyCoordinator
+        let faculty=await FacultyCoordinatorModel.findById(facultyID)
+        if(!faculty){
+            return res.status(404).json({
+                success:false,message:"Faculty coordinator not found"
+            })
+        }
+        if(newEvent.club){
+            let clubID=newEvent.club
+            let club=await ClubModel.findById(clubID)
+            if(!club){
+                return res.status(404).json({
+                    success:false,message:"Club not found"
+                })
+            }
+            if(club.clubCoordinator.toString()!==coordinator._id.toString()){
+                return res.status(400).json({
+                    success:false,message:"This club is not assigned to this coordinator"
+                })
+            }
+        }
         let eventDocument=await EventModel.create(newEvent)
         coordinator.managedEvents.push(eventDocument._id.toString())
         await coordinator.save()
@@ -73,7 +97,7 @@ clubCoordinatorRouter.get("/events",async(req,res)=>{
         })
     }
     catch(err){
-        res.status(500).json({
+        res.status(400).json({
             success:false,message:"Failed to fetch events"
         })
     }
@@ -107,20 +131,33 @@ clubCoordinatorRouter.put("/coordinator/:coordinatorid/event/:eventid",async(req
                 success:false,message:"Club coordinator not found"
             })
         }
-        if(!coordinator.managedEvents.includes(eventID)){
-            return res.status(401).json({
-                success:false,message:"You cannot update this event"
-            })
-        }
         let event=await EventModel.findById(eventID)
         if(!event){
             return res.status(404).json({
                 success:false,message:"Event not found"
             })
         }
-        event.eventName=req.body.eventName
-        event.organisers=req.body.organisers
-        event.department=req.body.department
+        let isManaged=false
+        for(let managedEventID of coordinator.managedEvents){
+            if(managedEventID.toString()===event._id.toString()){
+                isManaged=true
+                break
+            }
+        }
+        if(!isManaged){
+            return res.status(400).json({
+                success:false,message:"You cannot update this event"
+            })
+        }
+        if(req.body.eventName!==undefined){
+            event.eventName=req.body.eventName
+        }
+        if(req.body.organisers!==undefined){
+            event.organisers=req.body.organisers
+        }
+        if(req.body.department!==undefined){
+            event.department=req.body.department
+        }
         await event.save()
         res.status(200).json({
             success:true,message:"Event updated successfully",data:event
@@ -142,19 +179,54 @@ clubCoordinatorRouter.delete("/coordinator/:coordinatorid/event/:eventid",async(
                 success:false,message:"Club coordinator not found"
             })
         }
-        if(!coordinator.managedEvents.includes(eventID)){
-            return res.status(401).json({
-                success:false,message:"You cannot delete this event"
-            })
-        }
-        let deletedEvent=await EventModel.findByIdAndDelete(eventID)
-        if(!deletedEvent){
+        let event=await EventModel.findById(eventID)
+        if(!event){
             return res.status(404).json({
                 success:false,message:"Event not found"
             })
         }
-        coordinator.managedEvents=coordinator.managedEvents.filter((id)=>id!==eventID)
+        let isManaged=false
+        for(let managedEventID of coordinator.managedEvents){
+            if(managedEventID.toString()===event._id.toString()){
+                isManaged=true
+                break
+            }
+        }
+        if(!isManaged){
+            return res.status(400).json({
+                success:false,message:"You cannot delete this event"
+            })
+        }
+        for(let studentID of event.registeredStudents){
+            let student=await StudentModel.findById(studentID)
+            if(student){
+                let updatedEvents=[]
+                for(let registeredEventID of student.registeredEvents){
+                    if(registeredEventID.toString()!==event._id.toString()){
+                        updatedEvents.push(registeredEventID)
+                    }
+                }
+                student.registeredEvents=updatedEvents
+                let updatedParticipatedEvents=[]
+                for(let participatedEventID of student.participatedEvents){
+                    if(participatedEventID.toString()!==event._id.toString()){
+                        updatedParticipatedEvents.push(participatedEventID)
+                    }
+                }
+                student.participatedEvents=updatedParticipatedEvents
+                let updatedEventsWon=[]
+                for(let wonEventID of student.eventsWon){
+                    if(wonEventID.toString()!==event._id.toString()){
+                        updatedEventsWon.push(wonEventID)
+                    }
+                }
+                student.eventsWon=updatedEventsWon
+                await student.save()
+            }
+        }
+        coordinator.managedEvents=coordinator.managedEvents.filter((id)=>id.toString()!==event._id.toString())
         await coordinator.save()
+        await EventModel.findByIdAndDelete(eventID)
         res.status(200).json({
             success:true,message:"Event deleted successfully"
         })
@@ -175,15 +247,22 @@ clubCoordinatorRouter.get("/coordinator/:coordinatorid/event/:eventid/students",
                 success:false,message:"Club coordinator not found"
             })
         }
-        if(!coordinator.managedEvents.includes(eventID)){
-            return res.status(401).json({
-                success:false,message:"You cannot view students for this event"
-            })
-        }
         let event=await EventModel.findById(eventID)
         if(!event){
             return res.status(404).json({
                 success:false,message:"Event not found"
+            })
+        }
+        let isManaged=false
+        for(let managedEventID of coordinator.managedEvents){
+            if(managedEventID.toString()===event._id.toString()){
+                isManaged=true
+                break
+            }
+        }
+        if(!isManaged){
+            return res.status(400).json({
+                success:false,message:"You cannot view students for this event"
             })
         }
         let students=await StudentModel.find({_id:{$in:event.registeredStudents}}).select("-password")
@@ -225,13 +304,27 @@ clubCoordinatorRouter.put("/profile/:id",async(req,res)=>{
                 success:false,message:"Club coordinator not found"
             })
         }
-        coordinator.firstName=req.body.firstName
-        coordinator.lastName=req.body.lastName
-        coordinator.department=req.body.department
-        coordinator.section=req.body.section
-        coordinator.year=req.body.year
-        coordinator.email=req.body.email
-        coordinator.phoneNumber=req.body.phoneNumber
+        if(req.body.firstName!==undefined){
+            coordinator.firstName=req.body.firstName
+        }
+        if(req.body.lastName!==undefined){
+            coordinator.lastName=req.body.lastName
+        }
+        if(req.body.department!==undefined){
+            coordinator.department=req.body.department
+        }
+        if(req.body.section!==undefined){
+            coordinator.section=req.body.section
+        }
+        if(req.body.year!==undefined){
+            coordinator.year=req.body.year
+        }
+        if(req.body.email!==undefined){
+            coordinator.email=req.body.email
+        }
+        if(req.body.phoneNumber!==undefined){
+            coordinator.phoneNumber=req.body.phoneNumber
+        }
         await coordinator.save()
         res.status(200).json({
             success:true,message:"Coordinator profile updated",data:{
@@ -256,3 +349,4 @@ clubCoordinatorRouter.put("/profile/:id",async(req,res)=>{
         })
     }
 })
+```

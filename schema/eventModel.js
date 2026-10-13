@@ -14,6 +14,10 @@ const eventSchema=new Schema({
         required:[true,"Department is mandatory"],
         trim:true
     },
+    club:{
+        type:Schema.Types.ObjectId,
+        ref:"club"
+    },
     registeredStudents:{
         type:[Schema.Types.ObjectId],
         ref:"student",

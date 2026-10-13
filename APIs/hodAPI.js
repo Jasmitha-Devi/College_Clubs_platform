@@ -5,20 +5,30 @@ export const hodRouter=exp.Router()
 hodRouter.get("/events",async(req,res)=>{
     try{
         let events=await EventModel.find()
-        res.status(200).json({success:true,message:"Events displayed",data:events})
+        res.status(200).json({
+            success:true,message:"Events displayed",data:events
+        })
     }
     catch(err){
-        res.status(404).json({success:false,message:"Failed to fetch events"})
+        res.status(400).json({
+            success:false,message:"Failed to fetch events"
+        })
     }
 })
 hodRouter.get("/students/:department",async(req,res)=>{
     try{
         let departmentName=req.params.department
-        let students=await StudentModel.find({department:departmentName}).select("-password")
-        res.status(200).json({success:true,message:"Department students displayed",data:students})
+        let students=await StudentModel.find({
+            department:departmentName
+        }).select("-password")
+        res.status(200).json({
+            success:true,message:"Department students displayed",data:students
+        })
     }
     catch(err){
-        res.status(404).json({success:false,message:"Failed to fetch students"})
+        res.status(400).json({
+            success:false,message:"Failed to fetch students"
+        })
     }
 })
 hodRouter.get("/student/:id/:department",async(req,res)=>{
@@ -27,25 +37,39 @@ hodRouter.get("/student/:id/:department",async(req,res)=>{
         let departmentName=req.params.department
         let student=await StudentModel.findById(idOfReq).select("-password")
         if(!student){
-            return res.status(404).json({success:false,message:"Student not found"})
+            return res.status(404).json({
+                success:false,message:"Student not found"
+            })
         }
         if(student.department!==departmentName){
-            return res.status(401).json({success:false,message:"Unauthorized"})
+            return res.status(400).json({
+                success:false,message:"Student does not belong to this department"
+            })
         }
-        res.status(200).json({success:true,message:"Student found",data:student})
+        res.status(200).json({
+            success:true,message:"Student found",data:student
+        })
     }
     catch(err){
-        res.status(404).json({success:false,message:"Invalid ID"})
+        res.status(400).json({
+            success:false,message:"Invalid student ID"
+        })
     }
 })
 hodRouter.get("/department/events/:department",async(req,res)=>{
     try{
         let departmentName=req.params.department
-        let events=await EventModel.find({department:departmentName})
-        res.status(200).json({success:true,message:"Department events displayed",data:events})
+        let events=await EventModel.find({
+            department:departmentName
+        })
+        res.status(200).json({
+            success:true,message:"Department events displayed",data:events
+        })
     }
     catch(err){
-        res.status(404).json({success:false,message:"Failed to fetch department events"})
+        res.status(400).json({
+            success:false,message:"Failed to fetch department events"
+        })
     }
 })
 hodRouter.get("/department/events/:eventid/students/:department",async(req,res)=>{
@@ -54,13 +78,22 @@ hodRouter.get("/department/events/:eventid/students/:department",async(req,res)=
         let departmentName=req.params.department
         let event=await EventModel.findById(eventID)
         if(!event){
-            return res.status(404).json({success:false,message:"Event not found"})
+            return res.status(404).json({
+                success:false,message:"Event not found"
+            })
         }
-        let students=await StudentModel.find({_id:{$in:event.registeredStudents},department:departmentName}).select("-password")
-        res.status(200).json({success:true,message:"Registered students displayed",data:students})
+        let students=await StudentModel.find({
+            _id:{$in:event.registeredStudents},
+            department:departmentName
+        }).select("-password")
+        res.status(200).json({
+            success:true,message:"Registered students displayed",data:students
+        })
     }
     catch(err){
-        res.status(404).json({success:false,message:"Failed to fetch registered students"})
+        res.status(400).json({
+            success:false,message:"Failed to fetch registered students"
+        })
     }
 })
 hodRouter.get("/department/student/:id/events/:department",async(req,res)=>{
@@ -69,16 +102,26 @@ hodRouter.get("/department/student/:id/events/:department",async(req,res)=>{
         let departmentName=req.params.department
         let student=await StudentModel.findById(idOfReq)
         if(!student){
-            return res.status(404).json({success:false,message:"Student not found"})
+            return res.status(404).json({
+                success:false,message:"Student not found"
+            })
         }
         if(student.department!==departmentName){
-            return res.status(401).json({success:false,message:"Unauthorized"})
+            return res.status(400).json({
+                success:false,message:"Student does not belong to this department"
+            })
         }
-        let events=await EventModel.find({_id:{$in:student.registeredEvents}})
-        res.status(200).json({success:true,message:"Registered events displayed",data:events})
+        let events=await EventModel.find({
+            _id:{$in:student.registeredEvents}
+        })
+        res.status(200).json({
+            success:true,message:"Registered events displayed",data:events
+        })
     }
     catch(err){
-        res.status(404).json({success:false,message:"Failed to fetch registered events"})
+        res.status(400).json({
+            success:false,message:"Failed to fetch registered events"
+        })
     }
 })
 hodRouter.get("/department/student/:id/participation/:department",async(req,res)=>{
@@ -87,15 +130,25 @@ hodRouter.get("/department/student/:id/participation/:department",async(req,res)
         let departmentName=req.params.department
         let student=await StudentModel.findById(idOfReq)
         if(!student){
-            return res.status(404).json({success:false,message:"Student not found"})
+            return res.status(404).json({
+                success:false,message:"Student not found"
+            })
         }
         if(student.department!==departmentName){
-            return res.status(401).json({success:false,message:"Unauthorized"})
+            return res.status(400).json({
+                success:false,message:"Student does not belong to this department"
+            })
         }
-        let events=await EventModel.find({_id:{$in:student.participatedEvents}})
-        res.status(200).json({success:true,message:"Participation history displayed",data:events})
+        let events=await EventModel.find({
+            _id:{$in:student.participatedEvents}
+        })
+        res.status(200).json({
+            success:true,message:"Participation history displayed",data:events
+        })
     }
     catch(err){
-        res.status(404).json({success:false,message:"Failed to fetch participation history"})
+        res.status(400).json({
+            success:false,message:"Failed to fetch participation history"
+        })
     }
 })
